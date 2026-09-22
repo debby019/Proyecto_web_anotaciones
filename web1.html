@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Registro de componentes — Escáner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #14171b;
+    --surface: #1c2026;
+    --surface-raised: #232830;
+    --border: #2b313a;
+    --text: #edeef0;
+    --text-muted: #8b93a1;
+    --accent: #ff7a1a;
+    --accent-dim: #4a2c12;
+    --ok: #3ddc97;
+    --ok-dim: #14392b;
+    --danger: #ff5c5c;
+    --font-ui: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    min-height: 100%;
+  }
+
+  .shell {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 3.5rem;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+
+  h1 {
+    font-weight: 600;
+    font-size: 1.9rem;
+    margin: 0.35rem 0 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .lede {
+    color: var(--text-muted);
+    max-width: 46ch;
+    line-height: 1.55;
+    margin-bottom: 2.25rem;
+  }
+
+  /* --- Consola de escaneo --- */
+  .console {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.75rem;
+  }
+
+  .viewfinder {
+    position: relative;
+    height: 190px;
+    border-radius: 10px;
+    background:
+      linear-gradient(var(--surface-raised), var(--surface-raised)) padding-box,
+      repeating-linear-gradient(90deg, var(--border) 0 2px, transparent 2px 14px) border-box;
+    border: 2px dashed transparent;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .viewfinder-idle {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .viewfinder-idle svg { opacity: 0.55; }
+
+  .scan-laser {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    height: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 10px 2px rgba(255, 122, 26, 0.65);
+    top: 50%;
+    opacity: 0;
+  }
+
+  .console.is-scanning .scan-laser {
+    opacity: 1;
+    animation: sweep 1.1s ease-in-out infinite;
+  }
+
+  .console.is-scanning .viewfinder-idle { opacity: 0; }
+
+  @keyframes sweep {
+    0%   { top: 18%; }
+    50%  { top: 82%; }
+    100% { top: 18%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scan-laser { animation: none !important; opacity: 0.9; }
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .status-text {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .status-text.active { color: var(--accent); }
+
+  .btn-scan {
+    background: var(--accent);
+    border: none;
+    color: #1a1000;
+    font-weight: 600;
+    padding: 0.7rem 1.4rem;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    transition: transform 0.12s ease, background 0.15s ease;
+  }
+  .btn-scan:hover { background: #ff8c3a; color: #1a1000; }
+  .btn-scan:active { transform: scale(0.97); }
+  .btn-scan:disabled { background: var(--accent-dim); color: var(--text-muted); }
+  .btn-scan:focus-visible, .btn-icon:focus-visible, .btn-hist:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  /* --- Historial --- */
+  .hist-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 2.25rem 0 0.75rem;
+  }
+  .hist-head h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .hist-count {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .hist-empty {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .hist-item {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    margin-bottom: 0.6rem;
+  }
+  .hist-code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .hist-item .name { font-weight: 500; }
+  .hist-item .meta { color: var(--text-muted); font-size: 0.82rem; }
+  .hist-item .time {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* --- Modal --- */
+  .modal-content {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .modal-header { border-bottom: 1px solid var(--border); }
+  .modal-footer { border-top: 1px solid var(--border); }
+
+  .part-code {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1.5rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin: 1rem 0 1.4rem;
+  }
+  .spec-grid dt {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 0.15rem;
+  }
+  .spec-grid dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+  }
+
+  .form-label { font-size: 0.85rem; color: var(--text-muted); }
+  .form-control, .form-select {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .form-control:focus, .form-select:focus {
+    background: var(--surface-raised);
+    color: var(--text);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.2rem rgba(255, 122, 26, 0.2);
+  }
+  .form-control::placeholder { color: #55606d; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); }
+
+  .btn-confirm {
+    background: var(--ok);
+    border: none;
+    color: #06231a;
+    font-weight: 600;
+  }
+  .btn-confirm:hover { background: #4fe6a9; color: #06231a; }
+
+  /* Toast */
+  .toast-body-custom {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 420px) {
+    .spec-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <div class="eyebrow">Almacén — control de componentes</div>
+  <h1>Registro por escaneo</h1>
+  <p class="lede">
+    Activa el escáner y acerca el código de barras del componente.
+    Cuando se detecte, se abrirá una ficha con sus datos para que registres el movimiento.
+  </p>
+
+  <!-- Consola de escaneo -->
+  <div class="console" id="console">
+    <div class="viewfinder" id="viewfinder">
+      <div class="viewfinder-idle" id="viewfinderIdle">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" stroke-linecap="round"/>
+          <path d="M7 8v8M10 8v8M13 8v8M16 8v4" stroke-linecap="round"/>
+        </svg>
+        <span>Esperando código de barras</span>
+      </div>
+      <div class="scan-laser"></div>
+    </div>
+
+    <div class="status-row">
+      <span class="status-text" id="statusText">Escáner inactivo</span>
+      <button class="btn-scan" id="scanBtn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" stroke-linecap="round"/>
+          <line x1="7" y1="12" x2="17" y2="12" stroke-linecap="round"/>
+        </svg>
+        <span id="scanBtnLabel">Escanear código</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Historial -->
+  <div class="hist-head">
+    <h2>Últimos escaneos</h2>
+    <span class="hist-count" id="histCount">0 registros</span>
+  </div>
+  <div id="historyWrap">
+    <div class="hist-empty" id="histEmpty">
+      Aún no se ha escaneado ningún componente.
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: ficha del componente + formulario -->
+<div class="modal fade" id="scanModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="part-code" id="modalCode">COD-000000</div>
+          <h5 class="modal-title mt-1" id="modalName">Nombre del componente</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        <dl class="spec-grid">
+          <div>
+            <dt>Categoría</dt>
+            <dd id="modalCategoria">—</dd>
+          </div>
+          <div>
+            <dt>Ubicación actual</dt>
+            <dd id="modalUbicacion">—</dd>
+          </div>
+          <div>
+            <dt>Stock disponible</dt>
+            <dd id="modalStock">—</dd>
+          </div>
+          <div>
+            <dt>Última actualización</dt>
+            <dd id="modalFecha">—</dd>
+          </div>
+        </dl>
+
+        <form id="scanForm">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label" for="fCantidad">Cantidad</label>
+              <input type="number" class="form-control" id="fCantidad" min="1" placeholder="0" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label" for="fMovimiento">Tipo de movimiento</label>
+              <select class="form-select" id="fMovimiento" required>
+                <option value="" selected disabled>Elegir…</option>
+                <option value="entrada">Entrada</option>
+                <option value="salida">Salida</option>
+                <option value="ajuste">Ajuste de inventario</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="fDestino">Ubicación destino</label>
+              <input type="text" class="form-control" id="fDestino" placeholder="Ej. Estante B-2">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="fNotas">Notas</label>
+              <textarea class="form-control" id="fNotas" rows="2" placeholder="Observaciones (opcional)"></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" form="scanForm" class="btn btn-confirm">Guardar registro</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast de confirmación -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;">
+  <div id="confirmToast" class="toast align-items-center text-bg-dark border-0" role="status" aria-live="polite" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body toast-body-custom" id="toastMsg">Registro guardado</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // Datos de ejemplo — solo para maquetar el diseño.
+  // Cuando se conecte el escáner real, MOCK_COMPONENTS se sustituye
+  // por la respuesta de tu backend / base de datos al recibir el código.
+  // ---------------------------------------------------------------
+  const MOCK_COMPONENTS = [
+    { codigo: "COD-04821", nombre: "Resistencia 10kΩ 1/4W", categoria: "Pasivos", ubicacion: "Estante A-3", stock: 128 },
+    { codigo: "COD-11207", nombre: "Microcontrolador ATmega328P", categoria: "Circuitos integrados", ubicacion: "Estante C-1", stock: 34 },
+    { codigo: "COD-09933", nombre: "Sensor de temperatura DS18B20", categoria: "Sensores", ubicacion: "Estante B-5", stock: 61 },
+    { codigo: "COD-02214", nombre: "Conector JST-XH 2 pines", categoria: "Conectores", ubicacion: "Estante A-1", stock: 210 },
+  ];
+
+  const consoleEl   = document.getElementById("console");
+  const statusText  = document.getElementById("statusText");
+  const scanBtn     = document.getElementById("scanBtn");
+  const scanBtnLbl  = document.getElementById("scanBtnLabel");
+  const histWrap    = document.getElementById("historyWrap");
+  const histEmpty   = document.getElementById("histEmpty");
+  const histCount   = document.getElementById("histCount");
+
+  const scanModalEl = document.getElementById("scanModal");
+  const scanModal   = new bootstrap.Modal(scanModalEl);
+  const scanForm    = document.getElementById("scanForm");
+
+  const toastEl  = document.getElementById("confirmToast");
+  const toastMsg = document.getElementById("toastMsg");
+  const toast    = new bootstrap.Toast(toastEl, { delay: 2200 });
+
+  let records = [];
+  let currentPart = null;
+
+  // ---------------------------------------------------------------
+  // TODO (integración real): reemplazar simulateScan() por la lectura
+  // real del código de barras. Dos rutas típicas:
+  //  1) Lector USB tipo "wedge": escucha de teclado que recibe el
+  //     código + Enter (input oculto con autofocus).
+  //  2) Cámara: librería como ZXing o QuaggaJS que decodifica el
+  //     código y dispara este mismo flujo con el resultado real.
+  // En ambos casos, la función debe terminar llamando a onScanResult(data)
+  // con el componente encontrado en tu base de datos.
+  // ---------------------------------------------------------------
+  function simulateScan() {
+    scanBtn.disabled = true;
+    consoleEl.classList.add("is-scanning");
+    statusText.textContent = "Escaneando…";
+    statusText.classList.add("active");
+    scanBtnLbl.textContent = "Escaneando…";
+
+    setTimeout(() => {
+      const part = MOCK_COMPONENTS[Math.floor(Math.random() * MOCK_COMPONENTS.length)];
+      onScanResult(part);
+    }, 1400);
+  }
+
+  function onScanResult(part) {
+    currentPart = part;
+
+    consoleEl.classList.remove("is-scanning");
+    statusText.textContent = "Código detectado";
+    statusText.classList.remove("active");
+    scanBtn.disabled = false;
+    scanBtnLbl.textContent = "Escanear código";
+
+    document.getElementById("modalCode").textContent = part.codigo;
+    document.getElementById("modalName").textContent = part.nombre;
+    document.getElementById("modalCategoria").textContent = part.categoria;
+    document.getElementById("modalUbicacion").textContent = part.ubicacion;
+    document.getElementById("modalStock").textContent = part.stock + " unidades";
+    document.getElementById("modalFecha").textContent = nowLabel();
+
+    scanForm.reset();
+    scanModal.show();
+  }
+
+  function nowLabel() {
+    const d = new Date();
+    return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) +
+      " · " + d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  scanBtn.addEventListener("click", simulateScan);
+
+  scanForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!scanForm.reportValidity() || !currentPart) return;
+
+    const entry = {
+      codigo: currentPart.codigo,
+      nombre: currentPart.nombre,
+      movimiento: document.getElementById("fMovimiento").value,
+      cantidad: document.getElementById("fCantidad").value,
+      hora: nowLabel(),
+    };
+    records.unshift(entry);
+    renderHistory();
+
+    scanModal.hide();
+    toastMsg.textContent = "Registro guardado — " + entry.nombre;
+    toast.show();
+  });
+
+  function renderHistory() {
+    histCount.textContent = records.length + (records.length === 1 ? " registro" : " registros");
+    if (records.length === 0) {
+      histWrap.innerHTML = "";
+      histWrap.appendChild(histEmpty);
+      return;
+    }
+    histWrap.innerHTML = records.map(r => `
+      <div class="hist-item">
+        <span class="hist-code">${r.codigo}</span>
+        <div>
+          <div class="name">${r.nombre}</div>
+          <div class="meta">${movimientoLabel(r.movimiento)} · ${r.cantidad} u.</div>
+        </div>
+        <span class="time">${r.hora}</span>
+      </div>
+    `).join("");
+  }
+
+  function movimientoLabel(v) {
+    return { entrada: "Entrada", salida: "Salida", ajuste: "Ajuste" }[v] || v;
+  }
+})();
+</script>
+</body>
+</html>
