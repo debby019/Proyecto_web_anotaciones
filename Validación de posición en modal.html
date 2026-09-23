@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Validación de slot</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔖</text></svg>">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body {
+    background: #14171b;
+    color: #edeef0;
+    font-family: system-ui, sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .shell { max-width: 480px; margin: 3rem auto; padding: 0 1.25rem; text-align: center; }
+  .modal-content { background: #1c2026; color: #edeef0; border: 1px solid #2b313a; }
+  .modal-header, .modal-footer { border-color: #2b313a; }
+  .form-control { background: #232830; color: #edeef0; border-color: #2b313a; }
+  .form-control:focus { background: #232830; color: #edeef0; border-color: #ff7a1a; box-shadow: 0 0 0 .2rem rgba(255,122,26,.2); }
+  .form-control.is-valid { border-color: #3ddc97; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <p class="mb-3 text-secondary">Ejemplo: validar posición del componente</p>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#slotModal">
+    Ingresar posición
+  </button>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="slotModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar posición</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form id="slotForm" novalidate>
+        <div class="modal-body">
+          <label class="form-label" for="slotInput">Posición / slot</label>
+          <input type="text" class="form-control" id="slotInput" placeholder="Ej. A-3">
+          <div class="invalid-feedback" id="slotError"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Enviar</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // Valor que el input debe tener para considerarse correcto.
+  // En tu caso real vendría del componente escaneado.
+  const POSICION_ESPERADA = "A-3";
+
+  const form   = document.getElementById("slotForm");
+  const input  = document.getElementById("slotInput");
+  const error  = document.getElementById("slotError");
+  const modalEl = document.getElementById("slotModal");
+  const modal  = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  // Limpia el estado (vacío o correcto) antes de cada nueva validación.
+  // Esto es lo que evita que un error quede "pegado" tras corregirlo.
+  function limpiarEstado() {
+    input.classList.remove("is-invalid", "is-valid");
+    error.textContent = "";
+  }
+
+  function marcarError(mensaje) {
+    input.classList.remove("is-valid");
+    input.classList.add("is-invalid");
+    error.textContent = mensaje;
+  }
+
+  function marcarValido() {
+    input.classList.remove("is-invalid");
+    input.classList.add("is-valid");
+  }
+
+  // Revalida en cada tecleo, así el error desaparece apenas se corrige.
+  input.addEventListener("input", () => {
+    limpiarEstado();
+  });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    limpiarEstado();
+
+    const valor = input.value.trim();
+
+    if (valor === "") {
+      marcarError("Este campo es obligatorio.");
+      input.focus();
+      return;
+    }
+
+    if (valor !== POSICION_ESPERADA) {
+      marcarError("La posición no coincide. Verifica el slot indicado.");
+      input.focus();
+      return;
+    }
+
+    // Todo correcto
+    marcarValido();
+    modal.hide();
+    // Aquí continúa tu lógica real: guardar el dato, actualizar historial, etc.
+  });
+
+  // Al cerrar el modal, resetea el formulario para la próxima vez que se abra.
+  modalEl.addEventListener("hidden.bs.modal", function () {
+    form.reset();
+    limpiarEstado();
+  });
+})();
+</script>
+</body>
+</html>
